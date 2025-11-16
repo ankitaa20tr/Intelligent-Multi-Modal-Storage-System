@@ -30,21 +30,85 @@ class JSONAnalyzer:
             Dictionary with analysis results
         """
         try:
+            # Read file content first
             with open(file_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
+                content = f.read()
+            
+            # Try to parse JSON
+            try:
+                data = json.loads(content)
+            except json.JSONDecodeError as e:
+                # Provide detailed error information with context
+                lines = content.split('\n')
+                error_msg_parts = [
+                    f"Invalid JSON syntax at line {e.lineno}, column {e.colno}: {e.msg}"
+                ]
+                
+                # Show context around the error (3 lines before and after)
+                start_line = max(1, e.lineno - 3)
+                end_line = min(len(lines), e.lineno + 3)
+                
+                error_msg_parts.append("\nContext:")
+                for i in range(start_line - 1, end_line):
+                    line_num = i + 1
+                    line_content = lines[i] if i < len(lines) else ""
+                    marker = ">>> " if line_num == e.lineno else "    "
+                    error_msg_parts.append(f"{marker}Line {line_num}: {line_content}")
+                
+                # Show pointer to exact error location
+                if e.lineno <= len(lines) and e.colno:
+                    problem_line = lines[e.lineno - 1]
+                    # Calculate pointer position (account for tabs)
+                    pointer_pos = e.colno - 1
+                    # Replace tabs with spaces for accurate positioning
+                    display_line = problem_line.replace('\t', '    ')
+                    pointer_line = ' ' * pointer_pos + '^'
+                    error_msg_parts.append(f"\nError location:")
+                    error_msg_parts.append(f"  {display_line}")
+                    error_msg_parts.append(f"  {pointer_line}")
+                
+                # Provide specific suggestions based on error type
+                suggestions = []
+                if "property name" in e.msg.lower() and "double quotes" in e.msg.lower():
+                    suggestions.append("Property names must be enclosed in double quotes (e.g., use '\"name\"' not 'name')")
+                    suggestions.append("Example: { \"name\": \"value\" } instead of { name: \"value\" }")
+                elif "trailing" in e.msg.lower() and "comma" in e.msg.lower():
+                    suggestions.append("Remove the trailing comma before the closing bracket or brace")
+                elif "expecting" in e.msg.lower():
+                    suggestions.append("Check for missing commas, brackets, or braces")
+                    suggestions.append("Ensure all strings are properly quoted")
+                
+                if suggestions:
+                    error_msg_parts.append("\nSuggestions:")
+                    for suggestion in suggestions:
+                        error_msg_parts.append(f"  • {suggestion}")
+                
+                error_msg = "\n".join(error_msg_parts)
+                logger.error(f"JSON parsing error in {file_path}:\n{error_msg}")
+                raise ValueError(error_msg)
+            
+            # Validate data is not empty
+            if data is None:
+                raise ValueError("JSON file contains null value")
             
             # Handle single object vs array
             if isinstance(data, list):
+                if len(data) == 0:
+                    raise ValueError("JSON array is empty")
                 return await self._analyze_batch(data)
-            else:
+            elif isinstance(data, dict):
+                if len(data) == 0:
+                    raise ValueError("JSON object is empty")
                 return await self._analyze_single(data)
+            else:
+                raise ValueError(f"JSON root must be an object or array, got {type(data).__name__}")
         
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON in {file_path}: {e}")
-            raise ValueError(f"Invalid JSON: {e}")
+        except ValueError as e:
+            # Re-raise ValueError as-is (these are our validation errors)
+            raise
         except Exception as e:
             logger.error(f"Error analyzing JSON {file_path}: {e}", exc_info=True)
-            raise
+            raise ValueError(f"Error processing JSON file: {str(e)}")
     
     async def _analyze_single(self, obj: Dict) -> Dict:
         """Analyze a single JSON object"""

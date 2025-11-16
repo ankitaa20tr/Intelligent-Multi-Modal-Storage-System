@@ -9,47 +9,47 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'upload' | 'search' | 'stats'>('upload');
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50">
+    <main className="min-h-screen p-8 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <header className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <h1 className="text-4xl font-bold text-white mb-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
             Unified Smart Storage System
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-400">
             Intelligently store and retrieve media files and JSON data
           </p>
         </header>
 
         {/* Navigation Tabs */}
-        <div className="mb-6 border-b border-gray-200">
+        <div className="mb-6 border-b border-gray-700">
           <nav className="flex space-x-8">
             <button
               onClick={() => setActiveTab('upload')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'upload'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-500 text-blue-400'
+                  : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600'
               }`}
             >
               Upload
             </button>
             <button
               onClick={() => setActiveTab('search')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'search'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-500 text-blue-400'
+                  : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600'
               }`}
             >
               Search
             </button>
             <button
               onClick={() => setActiveTab('stats')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'stats'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-500 text-blue-400'
+                  : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600'
               }`}
             >
               Statistics

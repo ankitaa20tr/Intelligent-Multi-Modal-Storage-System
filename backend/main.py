@@ -268,72 +268,105 @@ async def process_media(file_path: Path, mime_type: str, filename: str) -> dict:
 
 async def process_json(file_path: Path, filename: str) -> dict:
     """Process JSON file through JSON analyzer"""
-    # Analyze JSON structure
-    analysis = await json_analyzer.analyze(file_path)
-    
-    # Schema builder decides SQL vs NoSQL
-    schema_decision = await storage_engine.decide_storage(analysis)
-    
-    # Store in appropriate database
-    storage_result = await storage_engine.store_json(
-        file_path, analysis, schema_decision
-    )
-    
-    # Store metadata and index
-    metadata = {
-        "filename": filename,
-        "analysis": analysis,
-        "schema_decision": schema_decision,
-        "storage_result": storage_result,
-    }
-    
-    if metadata_indexer:
-        index_id = await metadata_indexer.index_json(metadata)
-    else:
-        index_id = 0
-    
-    logger.info(
-        f"JSON processed: {filename} -> {schema_decision['storage_type']}, "
-        f"schema: {schema_decision.get('schema_name')}"
-    )
-    
-    # Prepare content summary
-    structure_type = analysis.get("type", "unknown")
-    field_count = analysis.get("field_count", 0)
-    nesting_depth = analysis.get("nesting_depth", 0)
-    is_consistent = analysis.get("is_consistent", False)
-    
-    content_summary = {
-        "structure_type": structure_type,
-        "field_count": field_count,
-        "nesting_depth": nesting_depth,
-        "is_consistent": is_consistent,
-        "storage_type": schema_decision.get("storage_type", "unknown"),
-        "schema_name": schema_decision.get("schema", {}).get("schema_name", "N/A"),
-        "records_count": storage_result.get("records_inserted", 0),
-    }
-    
-    # Extract sample keys from structure
-    structure = analysis.get("structure", {})
-    sample_keys = list(structure.get("fields", {}).keys())[:5]  # First 5 keys
-    
-    return {
-        "status": "success",
-        "type": "json",
-        "file_type": "JSON data",
-        "category": schema_decision.get("schema", {}).get("schema_name", "json_data"),
-        "location_saved": f"{storage_result.get('table_name') or storage_result.get('collection_name', 'N/A')} ({schema_decision.get('storage_type', 'unknown')})",
-        "filename": filename,
-        "index_id": index_id,
-        "whats_inside": {
-            "summary": f"JSON {structure_type} with {field_count} fields",
-            "details": content_summary,
-            "sample_keys": sample_keys,
-            "description": f"Storage: {schema_decision.get('storage_type', 'unknown')} | Schema: {content_summary['schema_name']} | Records: {content_summary['records_count']}",
-        },
-        "schema_decision": schema_decision,
-        "storage_result": storage_result,
-    }
+    try:
+        # Analyze JSON structure
+        analysis = await json_analyzer.analyze(file_path)
+        
+        # Schema builder decides SQL vs NoSQL
+        schema_decision = await storage_engine.decide_storage(analysis)
+        
+        # Store in appropriate database
+        storage_result = await storage_engine.store_json(
+            file_path, analysis, schema_decision
+        )
+        
+        # Store metadata and index
+        metadata = {
+            "filename": filename,
+            "analysis": analysis,
+            "schema_decision": schema_decision,
+            "storage_result": storage_result,
+        }
+        
+        if metadata_indexer:
+            index_id = await metadata_indexer.index_json(metadata)
+        else:
+            index_id = 0
+        
+        # Get schema name safely
+        schema = schema_decision.get("schema", {})
+        schema_name = schema.get("schema_name") or schema.get("table_name") or schema.get("collection_name") or "json_data"
+        
+        logger.info(
+            f"JSON processed: {filename} -> {schema_decision['storage_type']}, "
+            f"schema: {schema_name}"
+        )
+        
+        # Prepare content summary
+        structure_type = analysis.get("type", "unknown")
+        field_count = analysis.get("field_count", 0)
+        nesting_depth = analysis.get("nesting_depth", 0)
+        is_consistent = analysis.get("is_consistent", False)
+        
+        content_summary = {
+            "structure_type": structure_type,
+            "field_count": field_count,
+            "nesting_depth": nesting_depth,
+            "is_consistent": is_consistent,
+            "storage_type": schema_decision.get("storage_type", "unknown"),
+            "schema_name": schema_name,
+            "records_count": storage_result.get("records_inserted", 0),
+        }
+        
+        # Extract sample keys from structure
+        structure = analysis.get("structure", {})
+        sample_keys = list(structure.get("fields", {}).keys())[:5]  # First 5 keys
+        
+        return {
+            "status": "success",
+            "type": "json",
+            "file_type": "JSON data",
+            "category": schema_name,
+            "location_saved": f"{storage_result.get('table_name') or storage_result.get('collection_name', 'N/A')} ({schema_decision.get('storage_type', 'unknown')})",
+            "filename": filename,
+            "index_id": index_id,
+            "whats_inside": {
+                "summary": f"JSON {structure_type} with {field_count} fields",
+                "details": content_summary,
+                "sample_keys": sample_keys,
+                "description": f"Storage: {schema_decision.get('storage_type', 'unknown')} | Schema: {schema_name} | Records: {content_summary['records_count']}",
+            },
+            "schema_decision": schema_decision,
+            "storage_result": storage_result,
+        }
+        
+    except ValueError as e:
+        # JSON parsing/validation errors
+        error_detail = str(e)
+        logger.error(f"JSON parsing error: {error_detail}")
+        
+        # Extract suggestions if present in error message
+        suggestions = []
+        if "Suggestions:" in error_detail:
+            suggestion_lines = error_detail.split("Suggestions:")[1].strip().split("\n")
+            suggestions = [line.strip().lstrip("• ").lstrip("- ") for line in suggestion_lines if line.strip()]
+        
+        # Format error message for better readability
+        error_response = {
+            "error": "Invalid JSON syntax",
+            "message": error_detail,
+        }
+        
+        if suggestions:
+            error_response["suggestions"] = suggestions
+        else:
+            error_response["suggestion"] = "Please check your JSON file for syntax errors. Ensure all property names are in double quotes and all brackets/braces are properly closed."
+        
+        raise HTTPException(status_code=400, detail=error_response)
+    except Exception as e:
+        # Other errors
+        logger.error(f"JSON processing error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error processing JSON: {str(e)}")
 
 
 async def process_document(file_path: Path, mime_type: str, filename: str) -> dict:
