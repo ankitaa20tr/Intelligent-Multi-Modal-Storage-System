@@ -6,13 +6,23 @@ import axios from 'axios';
 interface UploadResult {
   status: string;
   type: string;
+  file_type?: string;
   filename: string;
   category?: string;
+  location_saved?: string;
   storage_path?: string;
   schema_decision?: any;
   index_id?: number;
   error?: string;
   text_preview?: string;
+  whats_inside?: {
+    summary?: string;
+    details?: any;
+    description?: string;
+    text_preview?: string;
+    sample_keys?: string[];
+    properties?: any;
+  };
   metadata?: any;
 }
 
@@ -185,54 +195,119 @@ export default function FileUpload() {
                   <div className="flex-1">
                     <p className="font-medium text-gray-900">{result.filename}</p>
                     {result.status === 'success' && (
-                      <div className="mt-2 text-sm text-gray-600">
-                        {result.type === 'media' && (
-                          <>
-                            <p>Type: Media</p>
-                            {result.category && <p>Category: {result.category}</p>}
-                            {result.storage_path && (
-                              <p className="text-xs text-gray-500">
-                                Path: {result.storage_path}
-                              </p>
-                            )}
-                          </>
+                      <div className="mt-2 text-sm text-gray-600 space-y-2">
+                        {/* Type and Category */}
+                        <div className="flex items-center gap-4">
+                          <span className="font-medium">Type:</span>
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                            {result.file_type || result.type}
+                          </span>
+                          {result.category && (
+                            <>
+                              <span className="font-medium">Category:</span>
+                              <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                                {result.category}
+                              </span>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Location Saved */}
+                        {(result.location_saved || result.storage_path) && (
+                          <div>
+                            <span className="font-medium">Location:</span>
+                            <p className="text-xs text-gray-500 mt-1 break-all">
+                              {result.location_saved || result.storage_path}
+                            </p>
+                          </div>
                         )}
-                        {result.type === 'json' && (
-                          <>
-                            <p>Type: JSON</p>
-                            {result.schema_decision && (
-                              <p>
-                                Storage: {result.schema_decision.storage_type}
+
+                        {/* What's Inside */}
+                        {result.whats_inside && (
+                          <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <p className="font-medium text-gray-900 mb-2">What's Inside:</p>
+                            
+                            {/* Summary */}
+                            {result.whats_inside.summary && (
+                              <p className="text-sm text-gray-700 mb-2">
+                                {result.whats_inside.summary}
                               </p>
                             )}
-                          </>
-                        )}
-                        {result.type === 'document' && (
-                          <>
-                            <p>Type: Document</p>
-                            {result.category && <p>Category: {result.category}</p>}
-                            {result.storage_path && (
-                              <p className="text-xs text-gray-500">
-                                Path: {result.storage_path}
+
+                            {/* Description */}
+                            {result.whats_inside.description && (
+                              <p className="text-xs text-gray-600 mb-2">
+                                {result.whats_inside.description}
                               </p>
                             )}
-                            {result.text_preview && (
-                              <div className="mt-2 p-2 bg-gray-100 rounded text-xs max-h-32 overflow-y-auto">
-                                <p className="font-medium mb-1">Text Preview:</p>
-                                <p className="text-gray-700">{result.text_preview}...</p>
+
+                            {/* Details */}
+                            {result.whats_inside.details && (
+                              <div className="mt-2 space-y-1 text-xs">
+                                {result.whats_inside.details.dimensions && (
+                                  <p>Dimensions: {result.whats_inside.details.dimensions}</p>
+                                )}
+                                {result.whats_inside.details.word_count && (
+                                  <p>Words: {result.whats_inside.details.word_count.toLocaleString()}</p>
+                                )}
+                                {result.whats_inside.details.page_count && (
+                                  <p>Pages: {result.whats_inside.details.page_count}</p>
+                                )}
+                                {result.whats_inside.details.file_size_mb && (
+                                  <p>Size: {result.whats_inside.details.file_size_mb} MB</p>
+                                )}
+                                {result.whats_inside.details.field_count !== undefined && (
+                                  <p>Fields: {result.whats_inside.details.field_count}</p>
+                                )}
+                                {result.whats_inside.details.records_count !== undefined && (
+                                  <p>Records: {result.whats_inside.details.records_count}</p>
+                                )}
+                                {result.whats_inside.details.num_frames && (
+                                  <p>Frames: {result.whats_inside.details.num_frames}</p>
+                                )}
                               </div>
                             )}
-                            {result.metadata?.metadata && (
-                              <div className="mt-2 text-xs text-gray-500">
-                                {result.metadata.metadata.word_count && (
-                                  <p>Words: {result.metadata.metadata.word_count}</p>
+
+                            {/* Sample Keys (for JSON) */}
+                            {result.whats_inside.sample_keys && result.whats_inside.sample_keys.length > 0 && (
+                              <div className="mt-2">
+                                <p className="text-xs font-medium mb-1">Sample Keys:</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {result.whats_inside.sample_keys.map((key, idx) => (
+                                    <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">
+                                      {key}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Text Preview (for documents) */}
+                            {result.whats_inside.text_preview && (
+                              <div className="mt-3 p-2 bg-white rounded border border-gray-300 max-h-32 overflow-y-auto">
+                                <p className="text-xs font-medium mb-1 text-gray-700">Text Preview:</p>
+                                <p className="text-xs text-gray-600 whitespace-pre-wrap">
+                                  {result.whats_inside.text_preview}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Document Properties */}
+                            {result.whats_inside.properties && Object.keys(result.whats_inside.properties).length > 0 && (
+                              <div className="mt-2 text-xs">
+                                <p className="font-medium mb-1">Properties:</p>
+                                {result.whats_inside.properties.title && (
+                                  <p>Title: {result.whats_inside.properties.title}</p>
                                 )}
-                                {result.metadata.metadata.num_pages && (
-                                  <p>Pages: {result.metadata.metadata.num_pages}</p>
+                                {result.whats_inside.properties.author && (
+                                  <p>Author: {result.whats_inside.properties.author}</p>
+                                )}
+                                {result.whats_inside.properties.subject && (
+                                  <p>Subject: {result.whats_inside.properties.subject}</p>
                                 )}
                               </div>
                             )}
-                          </>
+                          </div>
                         )}
                       </div>
                     )}
@@ -258,4 +333,5 @@ export default function FileUpload() {
     </div>
   );
 }
+
 

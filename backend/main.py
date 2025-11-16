@@ -234,13 +234,34 @@ async def process_media(file_path: Path, mime_type: str, filename: str) -> dict:
     
     logger.info(f"Media processed: {filename} -> {storage_path}, category: {category}")
     
+    # Prepare content summary
+    content_summary = {
+        "file_type": "image" if mime_type.startswith("image/") else "video",
+        "dimensions": f"{metadata.get('metadata', {}).get('width', 'N/A')}x{metadata.get('metadata', {}).get('height', 'N/A')}" if mime_type.startswith("image/") else None,
+        "format": metadata.get("metadata", {}).get("format", mime_type.split("/")[-1]),
+        "file_size_bytes": metadata.get("metadata", {}).get("file_size", 0),
+        "file_size_mb": round(metadata.get("metadata", {}).get("file_size", 0) / (1024 * 1024), 2) if metadata.get("metadata", {}).get("file_size") else 0,
+    }
+    
+    if mime_type.startswith("video/"):
+        content_summary.update({
+            "num_frames": metadata.get("metadata", {}).get("num_frames", "N/A"),
+            "duration_estimate": "N/A",  # Could be calculated if needed
+        })
+    
     return {
         "status": "success",
         "type": "media",
-        "filename": filename,
+        "file_type": content_summary["file_type"],
         "category": category,
-        "storage_path": str(storage_path),
+        "location_saved": str(storage_path),
+        "filename": filename,
         "index_id": index_id,
+        "whats_inside": {
+            "summary": f"{content_summary['file_type'].title()} file ({content_summary['format']})",
+            "details": content_summary,
+            "description": f"Category: {category} | Format: {content_summary['format']} | Size: {content_summary['file_size_mb']} MB",
+        },
         "metadata": metadata,
     }
 
@@ -276,13 +297,42 @@ async def process_json(file_path: Path, filename: str) -> dict:
         f"schema: {schema_decision.get('schema_name')}"
     )
     
+    # Prepare content summary
+    structure_type = analysis.get("type", "unknown")
+    field_count = analysis.get("field_count", 0)
+    nesting_depth = analysis.get("nesting_depth", 0)
+    is_consistent = analysis.get("is_consistent", False)
+    
+    content_summary = {
+        "structure_type": structure_type,
+        "field_count": field_count,
+        "nesting_depth": nesting_depth,
+        "is_consistent": is_consistent,
+        "storage_type": schema_decision.get("storage_type", "unknown"),
+        "schema_name": schema_decision.get("schema", {}).get("schema_name", "N/A"),
+        "records_count": storage_result.get("records_inserted", 0),
+    }
+    
+    # Extract sample keys from structure
+    structure = analysis.get("structure", {})
+    sample_keys = list(structure.get("fields", {}).keys())[:5]  # First 5 keys
+    
     return {
         "status": "success",
         "type": "json",
+        "file_type": "JSON data",
+        "category": schema_decision.get("schema", {}).get("schema_name", "json_data"),
+        "location_saved": f"{storage_result.get('table_name') or storage_result.get('collection_name', 'N/A')} ({schema_decision.get('storage_type', 'unknown')})",
         "filename": filename,
+        "index_id": index_id,
+        "whats_inside": {
+            "summary": f"JSON {structure_type} with {field_count} fields",
+            "details": content_summary,
+            "sample_keys": sample_keys,
+            "description": f"Storage: {schema_decision.get('storage_type', 'unknown')} | Schema: {content_summary['schema_name']} | Records: {content_summary['records_count']}",
+        },
         "schema_decision": schema_decision,
         "storage_result": storage_result,
-        "index_id": index_id,
     }
 
 
@@ -323,15 +373,54 @@ async def process_document(file_path: Path, mime_type: str, filename: str) -> di
     
     logger.info(f"Document processed: {filename} -> {storage_path}, category: {category}")
     
+    # Prepare content summary
+    doc_metadata = processing_result.get("metadata", {})
+    text_content = processing_result.get("text", "")
+    word_count = doc_metadata.get("word_count", 0)
+    char_count = doc_metadata.get("char_count", 0)
+    num_pages = doc_metadata.get("num_pages", doc_metadata.get("line_count", 0))
+    
+    content_summary = {
+        "document_type": mime_type.split("/")[-1].upper(),
+        "word_count": word_count,
+        "character_count": char_count,
+        "page_count": num_pages if num_pages else "N/A",
+        "file_size_bytes": doc_metadata.get("file_size", 0),
+        "file_size_mb": round(doc_metadata.get("file_size", 0) / (1024 * 1024), 2) if doc_metadata.get("file_size") else 0,
+        "has_text": len(text_content) > 0,
+        "text_length": len(text_content),
+    }
+    
+    # Extract first few sentences for preview
+    text_preview = text_content[:500] if text_content else ""
+    if len(text_content) > 500:
+        text_preview += "..."
+    
+    # Get document properties if available
+    doc_properties = {}
+    if doc_metadata.get("title"):
+        doc_properties["title"] = doc_metadata.get("title")
+    if doc_metadata.get("author"):
+        doc_properties["author"] = doc_metadata.get("author")
+    if doc_metadata.get("subject"):
+        doc_properties["subject"] = doc_metadata.get("subject")
+    
     return {
         "status": "success",
         "type": "document",
-        "filename": filename,
+        "file_type": content_summary["document_type"],
         "category": category,
-        "storage_path": str(storage_path),
+        "location_saved": str(storage_path),
+        "filename": filename,
         "index_id": index_id,
+        "whats_inside": {
+            "summary": f"{content_summary['document_type']} document with {word_count} words",
+            "details": content_summary,
+            "text_preview": text_preview,
+            "properties": doc_properties,
+            "description": f"Category: {category} | Pages: {content_summary['page_count']} | Words: {word_count} | Size: {content_summary['file_size_mb']} MB",
+        },
         "metadata": metadata,
-        "text_preview": processing_result.get("text", "")[:500] if processing_result.get("text") else "",  # First 500 chars
     }
 
 

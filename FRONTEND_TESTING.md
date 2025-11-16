@@ -1,6 +1,6 @@
 # Frontend Testing Guide
 
-This guide will help you test the frontend application with all the new file type support (videos, PDFs, DOC, DOCX, TXT).
+Complete guide for testing the frontend application with enhanced output display showing type, category, location saved, and what's inside for all file types.
 
 ## Prerequisites
 
@@ -43,14 +43,19 @@ The frontend will be available at `http://localhost:3000`
    - Select a video file (`.mp4`, `.mov`, `.avi`, `.mkv`, `.webm`)
    - The file should appear in the "Selected Files" section
 
-3. **Upload and Verify**
+3. **Upload and Verify Enhanced Output**
    - Click "Upload X file(s)" button
    - Wait for processing (may take a few seconds for videos)
-   - Check the "Upload Results" section:
-     - Status should be "success"
-     - Type should be "media"
-     - Category should show a meaningful category (not "uncategorized")
-     - Examples: "animals", "food", "vehicles", "nature", "people", "sports", etc.
+   - Check the "Upload Results" section for enhanced output:
+     - ✅ **Status**: Should be "success"
+     - ✅ **Type Badge**: Should show "video" or "image" in blue badge
+     - ✅ **Category Badge**: Should show meaningful category in green badge (not "uncategorized")
+     - ✅ **Location**: Should show full path where file is saved
+     - ✅ **What's Inside Section**: Should display:
+       - Summary (e.g., "Video file (mp4)")
+       - Description (e.g., "Category: animals | Format: mp4 | Size: 10.0 MB")
+       - Details (dimensions, file size, frame count for videos)
+     - Examples of categories: "animals", "food", "vehicles", "nature", "people", "sports", etc.
 
 4. **Expected Categories for Videos:**
    - Videos with animals → "animals"
@@ -67,10 +72,10 @@ The frontend will be available at `http://localhost:3000`
    - Select a PDF file (`.pdf`)
    - Click upload
 
-2. **Verify Results**
-   - Status: "success"
-   - Type: "document"
-   - Category should be meaningful based on content:
+2. **Verify Enhanced Results**
+   - ✅ **Status**: "success"
+   - ✅ **Type Badge**: Should show "PDF" in blue badge
+   - ✅ **Category Badge**: Should show meaningful category in green badge:
      - Technical PDFs → "technical"
      - Academic papers → "academic"
      - Business documents → "business"
@@ -81,8 +86,13 @@ The frontend will be available at `http://localhost:3000`
      - Literature → "literature"
      - Scientific papers → "scientific"
      - News articles → "news"
-   - Text Preview: Should show first 500 characters of extracted text
-   - Metadata: Should show word count and page count
+   - ✅ **Location**: Should show full path where PDF is saved
+   - ✅ **What's Inside Section**: Should display:
+     - Summary (e.g., "PDF document with 1500 words")
+     - Description (e.g., "Category: technical | Pages: 10 | Words: 1500 | Size: 1.2 MB")
+     - Details (word count, page count, file size)
+     - **Text Preview Box**: Should show first 500 characters in scrollable box
+     - **Properties**: Should show title, author, subject if available in PDF metadata
 
 ### Test DOC/DOCX Files
 
@@ -207,22 +217,53 @@ The frontend will be available at `http://localhost:3000`
 3. Verify file type is supported
 4. Check browser console for error messages
 
-## Testing Checklist
+## Testing Checklist - Enhanced Output Verification
 
+### Upload Functionality
 - [ ] Video files upload successfully
 - [ ] Videos show meaningful categories (not "uncategorized")
+- [ ] Videos display "What's Inside" with frame count and details
 - [ ] PDF files upload successfully
 - [ ] PDFs show meaningful categories
-- [ ] PDFs show text preview
+- [ ] PDFs show "What's Inside" with text preview, word count, page count
+- [ ] PDFs show document properties (title, author) if available
 - [ ] DOC/DOCX files upload successfully
 - [ ] DOC/DOCX show meaningful categories
+- [ ] DOC/DOCX show "What's Inside" with text preview
 - [ ] TXT files upload successfully
 - [ ] TXT files show meaningful categories
+- [ ] TXT files show "What's Inside" with text preview
+- [ ] JSON files upload successfully
+- [ ] JSON files show "What's Inside" with sample keys and storage info
+
+### Output Format Verification
+- [ ] All uploads show **Type badge** (blue)
+- [ ] All uploads show **Category badge** (green)
+- [ ] All uploads show **Location saved** (full path)
+- [ ] All uploads show **"What's Inside"** section with:
+  - [ ] Summary
+  - [ ] Description
+  - [ ] Details (file-specific information)
+  - [ ] Text preview (for documents)
+  - [ ] Sample keys (for JSON)
+  - [ ] Properties (for documents with metadata)
+
+### Search Functionality
 - [ ] Document search works
 - [ ] Media search works
+- [ ] JSON search works
+- [ ] Search results show correct information
+
+### Statistics
 - [ ] Statistics show document counts
-- [ ] All file types appear in search results
-- [ ] Categories are meaningful and accurate
+- [ ] All file types appear in statistics
+- [ ] Categories are listed correctly
+
+### Visual Verification
+- [ ] Type and Category badges are clearly visible
+- [ ] "What's Inside" section is well-formatted
+- [ ] Text preview is scrollable and readable
+- [ ] All information is properly displayed
 
 ## Sample Test Files
 
